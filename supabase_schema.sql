@@ -399,15 +399,15 @@ create policy "profiles_select_own_or_admin"
   on public.profiles
   for select
   to authenticated
-  using (id = auth.uid() or public.get_my_role() = 'admin');
+  using (id = (select auth.uid()) or (select public.get_my_role()) = 'admin');
 
 create policy "profiles_insert_self_kasir"
   on public.profiles
   for insert
   to authenticated
   with check (
-    id = auth.uid()
-    and email = (auth.jwt() ->> 'email')
+    id = (select auth.uid())
+    and email = ((select auth.jwt()) ->> 'email')
     and role = 'kasir'
     and status = 'aktif'
   );
@@ -416,10 +416,10 @@ create policy "profiles_update_self_basic"
   on public.profiles
   for update
   to authenticated
-  using (id = auth.uid())
+  using (id = (select auth.uid()))
   with check (
-    id = auth.uid()
-    and email = (auth.jwt() ->> 'email')
+    id = (select auth.uid())
+    and email = ((select auth.jwt()) ->> 'email')
     and role = 'kasir'
     and status = 'aktif'
   );
@@ -428,42 +428,42 @@ create policy "profiles_admin_all"
   on public.profiles
   for all
   to authenticated
-  using (public.get_my_role() = 'admin')
-  with check (public.get_my_role() = 'admin');
+  using ((select public.get_my_role()) = 'admin')
+  with check ((select public.get_my_role()) = 'admin');
 
 create policy "categories_select_active"
   on public.categories
   for select
   to authenticated
-  using (public.is_active_user());
+  using ((select public.is_active_user()));
 
 create policy "categories_admin_all"
   on public.categories
   for all
   to authenticated
-  using (public.get_my_role() = 'admin')
-  with check (public.get_my_role() = 'admin');
+  using ((select public.get_my_role()) = 'admin')
+  with check ((select public.get_my_role()) = 'admin');
 
 create policy "products_select_active"
   on public.products
   for select
   to authenticated
-  using (public.is_active_user());
+  using ((select public.is_active_user()));
 
 create policy "products_admin_all"
   on public.products
   for all
   to authenticated
-  using (public.get_my_role() = 'admin')
-  with check (public.get_my_role() = 'admin');
+  using ((select public.get_my_role()) = 'admin')
+  with check ((select public.get_my_role()) = 'admin');
 
 create policy "transactions_select_own_or_admin"
   on public.transactions
   for select
   to authenticated
   using (
-    public.get_my_role() = 'admin'
-    or (public.is_active_user() and kasir_id = auth.uid())
+    (select public.get_my_role()) = 'admin'
+    or ((select public.is_active_user()) and kasir_id = (select auth.uid()))
   );
 
 create policy "transactions_insert_own"
@@ -471,16 +471,16 @@ create policy "transactions_insert_own"
   for insert
   to authenticated
   with check (
-    public.is_active_user()
-    and kasir_id = auth.uid()
+    (select public.is_active_user())
+    and kasir_id = (select auth.uid())
   );
 
 create policy "transactions_admin_all"
   on public.transactions
   for all
   to authenticated
-  using (public.get_my_role() = 'admin')
-  with check (public.get_my_role() = 'admin');
+  using ((select public.get_my_role()) = 'admin')
+  with check ((select public.get_my_role()) = 'admin');
 
 create policy "transaction_items_select_readable"
   on public.transaction_items
@@ -498,8 +498,8 @@ create policy "transaction_items_admin_all"
   on public.transaction_items
   for all
   to authenticated
-  using (public.get_my_role() = 'admin')
-  with check (public.get_my_role() = 'admin');
+  using ((select public.get_my_role()) = 'admin')
+  with check ((select public.get_my_role()) = 'admin');
 
 -- --------------------------------------------------------------------
 -- 9. Admin awal

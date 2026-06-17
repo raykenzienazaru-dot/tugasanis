@@ -18,17 +18,14 @@ function hideAlert() {
   alertBox.classList.remove('show');
 }
 
-// Cek sesi aktif hanya di halaman login/index -> langsung redirect dashboard.
-// Dashboard punya guard sendiri, jadi auth.js tidak ikut campur di sana.
-const currentPath = window.location.pathname;
-const isEntryPage = currentPath.includes('login.html') || currentPath.endsWith('/') || currentPath.includes('index.html');
-
-if (isEntryPage && !currentPath.includes('reset-password.html')) {
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    const user = session?.user;
-    if (!user) return;
-
+// Cek sesi aktif saat halaman login/index dimuat
+async function checkActiveSession() {
+  if (isEntryPage && !currentPath.includes('reset-password.html')) {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) return;
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('role, status')
@@ -41,8 +38,9 @@ if (isEntryPage && !currentPath.includes('reset-password.html')) {
     } catch (err) {
       console.error('[AUTH] Error cek sesi:', err);
     }
-  });
+  }
 }
+checkActiveSession();
 
 // ─── Form Login ──────────────────────────────────────────────────
 if (loginForm) {
