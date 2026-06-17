@@ -692,6 +692,32 @@ begin
 end $$;
 
 -- --------------------------------------------------------------------
+-- 9a. Fungsi Reset Password Langsung (Bypass Verifikasi Email)
+-- --------------------------------------------------------------------
+create or replace function public.reset_user_password_direct(p_email text, p_new_password text)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  v_user_id uuid;
+begin
+  select id into v_user_id from auth.users where email = p_email;
+  
+  if v_user_id is null then
+    return false;
+  end if;
+  
+  update auth.users
+  set encrypted_password = extensions.crypt(p_new_password, extensions.gen_salt('bf')),
+      updated_at = now()
+  where id = v_user_id;
+  
+  return true;
+end;
+$$;
+
+-- --------------------------------------------------------------------
 -- 9b. Kategori & Produk Awal
 -- --------------------------------------------------------------------
 insert into public.categories (nama)
