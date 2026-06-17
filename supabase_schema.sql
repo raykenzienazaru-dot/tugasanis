@@ -91,10 +91,7 @@ create policy "Dapat dibaca oleh user terautentikasi" on public.profiles
 
 create policy "Admin dapat mengubah profile" on public.profiles
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- Kebijakan untuk Kategori
@@ -103,10 +100,7 @@ create policy "Dapat dibaca oleh semua user terautentikasi" on public.categories
 
 create policy "Admin dapat mengelola kategori" on public.categories
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- Kebijakan untuk Produk
@@ -118,10 +112,7 @@ create policy "Admin dan Kasir dapat mengupdate produk (untuk kurangi stok)" on 
 
 create policy "Admin dapat mengelola produk" on public.products
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- Kebijakan untuk Transaksi
@@ -133,10 +124,7 @@ create policy "Semua user terautentikasi dapat membuat transaksi" on public.tran
 
 create policy "Admin dapat mengelola semua transaksi" on public.transactions
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- Kebijakan untuk Item Transaksi
@@ -148,8 +136,5 @@ create policy "Semua user terautentikasi dapat membuat item transaksi" on public
 
 create policy "Admin dapat mengelola item transaksi" on public.transaction_items
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );

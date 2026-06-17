@@ -62,19 +62,7 @@ python3 -m http.server 8000
 
 Buka `http://localhost:8000/login.html` di browser Anda.
 
----
 
-## Langkah 5 — Deploy ke Hosting (Opsional)
-
-Jika Anda ingin memperbarui versi online di Firebase Hosting (atau hosting pilihan Anda lainnya):
-
-```bash
-firebase deploy --only hosting
-```
-
-Aplikasi Anda yang sudah terhubung dengan Supabase akan langsung live di alamat domain hosting Anda!
-
----
 
 ## Fitur per Role
 

@@ -2,8 +2,8 @@
 // SUPABASE-CONFIG.JS — Inisialisasi Supabase Client
 // ====================================================================
 
-const supabaseUrl = "https://zeuxdjuaajzqcrdoaqhg.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpldXhkanVhYWp6cWNyZG9hcWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2Nzc5MjcsImV4cCI6MjA5NzI1MzkyN30.YxKcQjLHpCU7SEzGw6HggsysdmL6mFO5DkcL3BXnAE8";
+const supabaseUrl = "https://szfbtyvwerhdzzhkrcep.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6ZmJ0eXZ3ZXJoZHp6aGtyY2VwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NzQ4MzYsImV4cCI6MjA5NzI1MDgzNn0.kjYauSHSnGOoYONKvGlPjhDD3DkENZneOOPdRqkRGKM";
 
 // Inisialisasi Client Utama
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
