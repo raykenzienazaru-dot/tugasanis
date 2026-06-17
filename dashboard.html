@@ -69,9 +69,15 @@
       </div>
     </aside>
 
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
     <!-- ===================== MAIN CONTENT ===================== -->
     <div class="main-content">
       <div class="topbar">
+        <button class="menu-toggle-btn" id="menuToggleBtn" onclick="toggleSidebar()">
+          <i data-lucide="menu" style="width: 20px; height: 20px;"></i>
+        </button>
         <h2 id="pageTitle">Transaksi Kasir</h2>
         <div id="todayDate" style="color:var(--text-muted); font-size:12px;"></div>
       </div>

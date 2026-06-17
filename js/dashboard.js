@@ -110,9 +110,33 @@ function setupNavigation() {
       document.getElementById('view-' + viewName).classList.add('active');
       document.getElementById('pageTitle').textContent = titles[viewName] || 'Dashboard';
       
+      // Auto-close sidebar on mobile
+      const sidebar = document.querySelector('.sidebar');
+      if (sidebar && sidebar.classList.contains('show')) {
+        toggleSidebar();
+      }
+
       if (window.lucide) lucide.createIcons();
     });
   });
+}
+
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if (!sidebar || !overlay) return;
+  const isOpen = sidebar.classList.toggle('show');
+  if (isOpen) {
+    overlay.style.display = 'block';
+    setTimeout(() => overlay.classList.add('show'), 10);
+  } else {
+    overlay.classList.remove('show');
+    setTimeout(() => {
+      if (!sidebar.classList.contains('show')) {
+        overlay.style.display = 'none';
+      }
+    }, 300);
+  }
 }
 
 // --------------------------------------------------------------------
