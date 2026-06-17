@@ -1,6 +1,6 @@
 -- ====================================================================
 -- SUPABASE_SCHEMA.SQL — Setup lengkap: tabel, RLS, trigger & akun admin
--- Salin SELURUH isi file ini → paste di SQL Editor Supabase → RUN (▶)
+-- Salin SELURUH file ini → paste di SQL Editor Supabase → RUN (▶)
 --
 -- Admin:
 --   Email   : nurulanissamusthapa@gmail.com
@@ -8,7 +8,7 @@
 -- ====================================================================
 
 -- ----------------------------------------------------------------
--- 1. Hapus tabel lama (urutan penting karena foreign key)
+-- 1. Hapus tabel lama
 -- ----------------------------------------------------------------
 drop table if exists public.transaction_items cascade;
 drop table if exists public.transactions      cascade;
@@ -101,13 +101,26 @@ end;
 $$;
 
 drop trigger if exists on_auth_user_created on auth.users;
-
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
 -- ----------------------------------------------------------------
--- 8. Enable Row Level Security
+-- 8. Helper function: ambil role user saat ini (SECURITY DEFINER
+--    sehingga bypass RLS → tidak ada infinite recursion)
+-- ----------------------------------------------------------------
+create or replace function public.get_my_role()
+returns text
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
+
+-- ----------------------------------------------------------------
+-- 9. Enable Row Level Security
 -- ----------------------------------------------------------------
 alter table public.profiles          enable row level security;
 alter table public.categories        enable row level security;
@@ -116,44 +129,36 @@ alter table public.transactions      enable row level security;
 alter table public.transaction_items enable row level security;
 
 -- ----------------------------------------------------------------
--- 9. RLS Policies — Profiles
---    PENTING: Gunakan auth.jwt() bukan query ke profiles itu sendiri
---    supaya tidak infinite recursion!
+-- 10. RLS Policies — Profiles
+--     Pakai get_my_role() untuk cek admin → aman, tidak recursion
 -- ----------------------------------------------------------------
 drop policy if exists "Baca semua profiles"    on public.profiles;
 drop policy if exists "Update profile sendiri" on public.profiles;
+drop policy if exists "Admin insert profiles"  on public.profiles;
+drop policy if exists "Admin update profiles"  on public.profiles;
+drop policy if exists "Admin delete profiles"  on public.profiles;
 drop policy if exists "Admin kelola profiles"  on public.profiles;
 drop policy if exists "Baca profiles sendiri"  on public.profiles;
 drop policy if exists "Dapat dibaca oleh user terautentikasi" on public.profiles;
 drop policy if exists "Admin dapat mengubah profile"          on public.profiles;
 
--- Semua user login bisa baca semua profile
 create policy "Baca semua profiles" on public.profiles
   for select using (auth.role() = 'authenticated');
 
--- User bisa update profile sendiri
 create policy "Update profile sendiri" on public.profiles
   for update using (auth.uid() = id);
 
--- Admin bisa insert/delete/update semua profile
--- GUNAKAN JWT metadata bukan subquery ke profiles (cegah infinite recursion)
 create policy "Admin insert profiles" on public.profiles
-  for insert with check (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
+  for insert with check (public.get_my_role() = 'admin');
 
 create policy "Admin update profiles" on public.profiles
-  for update using (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
+  for update using (public.get_my_role() = 'admin');
 
 create policy "Admin delete profiles" on public.profiles
-  for delete using (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
+  for delete using (public.get_my_role() = 'admin');
 
 -- ----------------------------------------------------------------
--- 10. RLS Policies — Kategori
+-- 11. RLS Policies — Kategori
 -- ----------------------------------------------------------------
 drop policy if exists "Baca kategori"         on public.categories;
 drop policy if exists "Admin kelola kategori" on public.categories;
@@ -164,12 +169,10 @@ create policy "Baca kategori" on public.categories
   for select using (auth.role() = 'authenticated');
 
 create policy "Admin kelola kategori" on public.categories
-  for all using (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
+  for all using (public.get_my_role() = 'admin');
 
 -- ----------------------------------------------------------------
--- 11. RLS Policies — Produk
+-- 12. RLS Policies — Produk
 -- ----------------------------------------------------------------
 drop policy if exists "Baca produk"        on public.products;
 drop policy if exists "Update stok produk" on public.products;
@@ -185,12 +188,10 @@ create policy "Update stok produk" on public.products
   for update using (auth.role() = 'authenticated');
 
 create policy "Admin kelola produk" on public.products
-  for all using (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
+  for all using (public.get_my_role() = 'admin');
 
 -- ----------------------------------------------------------------
--- 12. RLS Policies — Transaksi
+-- 13. RLS Policies — Transaksi
 -- ----------------------------------------------------------------
 drop policy if exists "Baca transaksi"         on public.transactions;
 drop policy if exists "Buat transaksi"         on public.transactions;
@@ -206,12 +207,10 @@ create policy "Buat transaksi" on public.transactions
   for insert with check (auth.role() = 'authenticated');
 
 create policy "Admin kelola transaksi" on public.transactions
-  for all using (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
+  for all using (public.get_my_role() = 'admin');
 
 -- ----------------------------------------------------------------
--- 13. RLS Policies — Item Transaksi
+-- 14. RLS Policies — Item Transaksi
 -- ----------------------------------------------------------------
 drop policy if exists "Baca item transaksi"         on public.transaction_items;
 drop policy if exists "Buat item transaksi"         on public.transaction_items;
@@ -227,17 +226,15 @@ create policy "Buat item transaksi" on public.transaction_items
   for insert with check (auth.role() = 'authenticated');
 
 create policy "Admin kelola item transaksi" on public.transaction_items
-  for all using (
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
-  );
+  for all using (public.get_my_role() = 'admin');
 
 -- ================================================================
--- 14. BUAT AKUN ADMIN LANGSUNG (tanpa perlu UI Supabase)
+-- 15. BUAT AKUN ADMIN LANGSUNG
 --     Email   : nurulanissamusthapa@gmail.com
 --     Password: admin123
 -- ================================================================
 
--- Hapus user lama jika sudah ada (cegah duplikat)
+-- Hapus user lama jika sudah ada
 do $$
 declare v_uid uuid;
 begin
@@ -248,7 +245,7 @@ begin
   end if;
 end $$;
 
--- Buat user baru di auth.users dengan password bcrypt
+-- Buat user baru
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, invited_at, confirmation_token, confirmation_sent_at,
@@ -271,7 +268,7 @@ insert into auth.users (
   null, null, '', '', null, '', 0, null, '', null
 );
 
--- Buat profile admin (backup jika trigger belum jalan)
+-- Buat profile admin
 insert into public.profiles (id, email, nama, role, status)
 select id, email, 'Admin', 'admin', 'aktif'
 from auth.users
@@ -280,7 +277,7 @@ on conflict (id) do update
   set role = 'admin', status = 'aktif', nama = 'Admin';
 
 -- ================================================================
--- 15. VERIFIKASI HASIL — Harus muncul: email_verified=true, role=admin
+-- 16. VERIFIKASI — Hasil harus: email_verified=true, role=admin
 -- ================================================================
 select
   au.id,
