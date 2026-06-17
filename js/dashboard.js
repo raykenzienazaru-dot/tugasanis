@@ -491,12 +491,12 @@ function renderStockChart() {
       scales: {
         y: {
           beginAtZero: true,
-          grid: { color: 'rgba(255, 255, 255, 0.08)' },
-          ticks: { stepSize: 5, color: '#9ca3af' }
+          grid: { color: '#f1f5f9' },
+          ticks: { stepSize: 5, color: '#475569' }
         },
         x: {
           grid: { display: false },
-          ticks: { color: '#9ca3af' }
+          ticks: { color: '#475569' }
         }
       },
       plugins: {
@@ -1208,12 +1208,12 @@ function renderLaporanCharts(dailyRevenueData, categoryData) {
         scales: {
           y: {
             beginAtZero: true,
-            grid: { color: 'rgba(255, 255, 255, 0.08)' },
-            ticks: { color: '#9ca3af' }
+            grid: { color: '#f1f5f9' },
+            ticks: { color: '#475569' }
           },
           x: {
             grid: { display: false },
-            ticks: { color: '#9ca3af' }
+            ticks: { color: '#475569' }
           }
         },
         plugins: {
