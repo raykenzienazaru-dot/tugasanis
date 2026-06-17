@@ -9,6 +9,8 @@ let allKategori      = [];
 let cart             = [];
 let allTransaksi     = [];
 let allKasirAccounts = [];
+let dashboardInitialized = false;
+let isProcessingPayment = false;
 
 // --------------------------------------------------------------------
 // 1. AUTH GUARD
@@ -41,7 +43,9 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     localStorage.setItem('userRole', currentUserData.role);
     localStorage.setItem('userName', currentUserData.nama || currentUserData.email);
 
-    initDashboard();
+    if (!dashboardInitialized) {
+      initDashboard();
+    }
 
   } catch (err) {
     console.error('Gagal memuat data user:', err);
@@ -53,6 +57,8 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 // 2. INISIALISASI DASHBOARD
 // --------------------------------------------------------------------
 function initDashboard() {
+  dashboardInitialized = true;
+
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('appLayout').style.display     = 'flex';
 
@@ -146,6 +152,26 @@ function formatRupiah(n) {
   return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 }
 
+function getLocalDateRangeIso(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const start = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const end = new Date(year, month - 1, day, 23, 59, 59, 999);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function normalizeJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function escapeHtml(text) {
   const d = document.createElement('div');
   d.textContent = text || '';
@@ -181,7 +207,7 @@ async function fetchKategori() {
     return;
   }
   
-  allKategori = data;
+  allKategori = data || [];
   renderKategoriTable();
   renderKategoriDropdowns();
 }
@@ -211,7 +237,8 @@ function renderKategoriDropdowns() {
   }
   const selEl = document.getElementById('produkKategori');
   if (selEl) {
-    selEl.innerHTML = allKategori.map(k => `<option value="${k.id}">${escapeHtml(k.nama)}</option>`).join('');
+    selEl.innerHTML = '<option value="">Tanpa Kategori</option>' +
+      allKategori.map(k => `<option value="${k.id}">${escapeHtml(k.nama)}</option>`).join('');
   }
 }
 
@@ -271,7 +298,7 @@ async function fetchProduk() {
     return;
   }
 
-  allProduk = data;
+  allProduk = data || [];
   renderProdukGrid();
   renderProdukTable();
   renderStockChart();
@@ -491,7 +518,7 @@ function renderCart() {
     if (rowDiskon) rowDiskon.style.display = 'none';
     if (ppnEl) ppnEl.textContent = formatRupiah(0);
     if (totalEl) totalEl.textContent = formatRupiah(0);
-    btnBayar.disabled = true;
+    if (btnBayar) btnBayar.disabled = true;
     return;
   }
 
@@ -526,73 +553,45 @@ function renderCart() {
   }
   if (ppnEl) ppnEl.textContent = formatRupiah(ppn);
   if (totalEl) totalEl.textContent = formatRupiah(total);
-  btnBayar.disabled       = false;
+  if (btnBayar) btnBayar.disabled = isProcessingPayment;
 }
 
 async function prosesPembayaran() {
-  if (!cart.length) return;
+  if (!cart.length || isProcessingPayment) return;
 
-  const subtotal     = cart.reduce((sum, i) => sum + i.harga * i.qty, 0);
-  const diskon       = subtotal > 100000 ? Math.round(subtotal * 0.1) : 0;
-  const setelahDiskon = subtotal - diskon;
-  const ppn          = Math.round(setelahDiskon * 0.11);
-  const total        = setelahDiskon + ppn;
-
-  const noTransaksi  = 'TRX-' + Date.now();
-  const transaksiData = {
-    no_transaksi: noTransaksi,
-    subtotal,
-    diskon,
-    ppn,
-    total,
-    kasir_id:   currentUser.id,
-    kasir_nama: currentUserData.nama || currentUserData.email
-  };
+  const btnBayar = document.getElementById('btnBayar');
+  const originalButtonText = btnBayar?.textContent || 'Proses Pembayaran';
+  isProcessingPayment = true;
+  if (btnBayar) {
+    btnBayar.disabled = true;
+    btnBayar.textContent = 'Memproses...';
+  }
 
   try {
-    // 1. Simpan Transaksi Utama
-    const { data: trx, error: trxError } = await supabase
-      .from('transactions')
-      .insert([transaksiData])
-      .select()
-      .single();
-
-    if (trxError) throw trxError;
-
-    // 2. Simpan Item Detail Transaksi
-    const itemsData = cart.map(c => ({
-      transaction_id: trx.id,
-      product_id: c.produkId,
-      nama: c.nama,
-      harga: c.harga,
-      qty: c.qty,
-      subtotal: c.harga * c.qty
+    const rpcItems = cart.map(item => ({
+      product_id: item.produkId,
+      qty: item.qty
     }));
 
-    const { error: itemsError } = await supabase
-      .from('transaction_items')
-      .insert(itemsData);
+    const { data: trx, error } = await supabase
+      .rpc('process_transaction', { p_items: rpcItems })
+      .single();
 
-    if (itemsError) throw itemsError;
+    if (error) throw error;
+    if (!trx) throw new Error('Transaksi tidak mengembalikan data.');
 
-    // 3. Update Stok Produk (Satu per satu)
-    for (const item of cart) {
-      const p = allProduk.find(x => x.id === item.produkId);
-      const stokBaru = Math.max(0, (p?.stok || 0) - item.qty);
-      const { error: stockError } = await supabase
-        .from('products')
-        .update({ stok: stokBaru })
-        .eq('id', item.produkId);
-        
-      if (stockError) console.error('Gagal update stok produk:', item.produkId, stockError);
-    }
-
-    // Tampilkan struk
-    tampilkanStruk({ ...transaksiData, items: itemsData });
+    const trxItems = normalizeJsonArray(trx.items);
+    tampilkanStruk({ ...trx, items: trxItems });
     cart = [];
     renderCart();
+    fetchProduk();
+    fetchRiwayat();
   } catch (err) {
     alert('Gagal memproses pembayaran: ' + err.message);
+  } finally {
+    isProcessingPayment = false;
+    if (btnBayar) btnBayar.textContent = originalButtonText;
+    if (cart.length) renderCart();
   }
 }
 
@@ -661,7 +660,7 @@ async function fetchRiwayat() {
     return;
   }
 
-  allTransaksi = data;
+  allTransaksi = data || [];
   renderRiwayatTable();
 }
 
@@ -735,8 +734,8 @@ async function generateLaporan() {
   const tglAkhir = document.getElementById('laporanTanggalAkhir').value;
   if (!tglMulai || !tglAkhir) { alert('Pilih rentang tanggal terlebih dahulu.'); return; }
 
-  const startDate = tglMulai + 'T00:00:00.000Z';
-  const endDate   = tglAkhir + 'T23:59:59.999Z';
+  const startDate = getLocalDateRangeIso(tglMulai).start;
+  const endDate   = getLocalDateRangeIso(tglAkhir).end;
 
   try {
     const { data: transaksis, error } = await supabase
@@ -750,11 +749,11 @@ async function generateLaporan() {
     let totalPendapatan = 0, jumlahTransaksi = 0;
     const produkMap = {};
 
-    transaksis.forEach(t => {
+    (transaksis || []).forEach(t => {
       totalPendapatan  += Number(t.total);
       jumlahTransaksi  += 1;
       
-      t.transaction_items.forEach(item => {
+      (t.transaction_items || []).forEach(item => {
         if (!produkMap[item.nama]) produkMap[item.nama] = { qty: 0, total: 0 };
         produkMap[item.nama].qty   += item.qty;
         produkMap[item.nama].total += Number(item.subtotal);
@@ -801,7 +800,7 @@ async function fetchKasirAccounts() {
     return;
   }
 
-  allKasirAccounts = data;
+  allKasirAccounts = data || [];
   renderKasirTable();
 }
 
@@ -878,11 +877,27 @@ async function saveKasirAccount() {
     });
 
     if (error) throw error;
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      throw new Error('Email ini sudah terdaftar.');
+    }
+    if (!data.user?.id) {
+      throw new Error('Akun berhasil dibuat, tetapi ID user tidak diterima.');
+    }
 
-    // Catatan: Karena kita menggunakan trigger di database PostgreSQL Supabase,
-    // data profil di public.profiles otomatis terbuat dari backend secara definer.
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: data.user.id,
+        email,
+        nama,
+        role,
+        status: 'aktif'
+      }, { onConflict: 'id' });
+
+    if (profileError) throw profileError;
     
     closeModal('modalKasir');
+    fetchKasirAccounts();
 
   } catch (err) {
     let msg = 'Gagal membuat akun: ' + err.message;

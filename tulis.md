@@ -24,7 +24,9 @@ kasiranis/
 2. Tunggu hingga proyek selesai dibuat.
 3. Di panel sebelah kiri, pilih menu **SQL Editor** ➔ Klik **New Query**.
 4. Salin seluruh isi dari file **`supabase_schema.sql`** yang ada di folder proyek ini dan tempel (paste) ke SQL Editor Supabase tersebut.
-5. Klik **Run** (atau tekan `Ctrl + Enter`). Ini akan otomatis membuat seluruh tabel (`profiles`, `categories`, `products`, `transactions`, `transaction_items`), relasi kunci asing, trigger pembuatan profil otomatis, dan Row Level Security (RLS) policies.
+5. Klik **Run** (atau tekan `Ctrl + Enter`). Ini akan otomatis membuat seluruh tabel (`profiles`, `categories`, `products`, `transactions`, `transaction_items`), relasi kunci asing, trigger pembuatan profil otomatis, Row Level Security (RLS) policies, fungsi transaksi atomik `process_transaction`, dan akun admin awal.
+
+> Catatan: file schema setup menghapus tabel `public` lama. Backup data dulu jika database sudah berisi produk atau transaksi penting.
 
 ---
 
@@ -37,17 +39,16 @@ kasiranis/
 
 ---
 
-## Langkah 3 — Buat Akun Admin Pertama
+## Langkah 3 — Login Admin Pertama
 
-1. Di Supabase Dashboard, masuk ke menu **Authentication > Users**.
-2. Klik **Add User** ➔ pilih **Create User**.
-3. Isi **Email** dan **Password** admin pertama Anda.
-4. Klik **Create User**.
-5. Karena trigger PostgreSQL yang kita buat di SQL Editor otomatis berjalan, akun ini sekarang sudah memiliki profile di tabel `profiles` dengan role default `kasir` dan status `aktif`.
-6. Untuk mengubahnya menjadi **`admin`**:
-   * Pergi ke menu **Table Editor** ➔ pilih tabel **`profiles`**.
-   * Klik dua kali pada kolom `role` untuk akun admin Anda, ubah nilainya dari `kasir` menjadi **`admin`**.
-   * Tekan Enter atau klik **Save** untuk menyimpan perubahan.
+Schema sudah membuat akun admin awal secara otomatis:
+
+```text
+Email    : nurulanissamusthapa@gmail.com
+Password : admin123
+```
+
+Setelah login, ganti password admin dari Supabase Dashboard atau gunakan fitur lupa password agar tidak memakai password default terlalu lama.
 
 ---
 

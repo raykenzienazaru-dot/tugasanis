@@ -77,27 +77,34 @@ if (loginForm) {
       const user = data.user;
 
       // 2. Ambil data profile
-      const { data: profile, error: profileError } = await supabase
+      let { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
       if (profileError || !profile) {
-        // Profile belum ada → auto-insert (untuk admin yang dibuat manual)
-        const { error: insertErr } = await supabase.from('profiles').insert({
+        // Profile belum ada -> buat fallback aman sebagai kasir aktif.
+        const fallbackProfile = {
           id:     user.id,
           email:  user.email,
           nama:   user.user_metadata?.nama || user.email.split('@')[0],
-          role:   user.user_metadata?.role || 'kasir',
+          role:   'kasir',
           status: 'aktif'
+        };
+
+        const { error: insertErr } = await supabase.from('profiles').insert({
+          id:     fallbackProfile.id,
+          email:  fallbackProfile.email,
+          nama:   fallbackProfile.nama,
+          role:   fallbackProfile.role,
+          status: fallbackProfile.status
         });
         if (insertErr) {
           await supabase.auth.signOut();
           throw new Error('Gagal membuat profil akun. Hubungi administrator.');
         }
-        window.location.href = 'dashboard.html';
-        return;
+        profile = fallbackProfile;
       }
 
       if (profile.status === 'nonaktif') {
