@@ -73,5 +73,17 @@ Buka `http://localhost:8000/login.html` di browser Anda.
 | Riwayat Transaksi       |  Milik sendiri | Semua |
 | Kelola Produk           |  ❌  |  ✅  |
 | Kelola Kategori         |  ❌  |  ✅  |
-| Laporan Penjualan       |  ❌  |  ✅  |
+| Kelola Kupon            |  ❌  |  ✅  |
+| Laporan Penjualan & Laba|  ❌  |  ✅  |
 | Kelola Akun Kasir       |  ❌  |  ✅  |
+
+---
+
+## Logika Bisnis & Transaksi Baru
+
+1. **Diskon Otomatis**: Jika subtotal belanja melebihi **Rp 100.000**, sistem otomatis memotong **Rp 10.000** pada transaksi tersebut.
+2. **Kupon Terbatas**: Admin dapat membuat kupon diskon dengan minimal belanja dan batas kuota tertentu. Kasir dapat memasukkan kode kupon saat proses pembayaran.
+3. **Pembayaran Multi-Metode**: Transaksi POS kasir mendukung pembayaran via **Tunai** (menampilkan kembalian real-time + uang pas), **QRIS** (menampilkan QR code dinamis), dan **Transfer Bank** (BCA, Mandiri, BNI).
+4. **Keuntungan & Barcode**:
+   - Sistem merekam **Harga Beli** produk dan menghitung total keuntungan per transaksi pada diagram monitoring admin.
+   - Kolom **Barcode** mendukung input barcode fisik/pindai langsung dengan tombol Enter di kasir, lengkap dengan generator barcode acak untuk produk baru.
