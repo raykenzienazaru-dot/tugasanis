@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Daftar Akun Kasir Baru — Kasir App">
+  <title>Daftar Akun — Kasir App</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <div class="login-wrapper">
+    <div class="login-box" style="max-width:460px;">
+      <div class="logo">
+        <div class="logo-icon">
+          <i data-lucide="user-plus" style="color: var(--primary); width: 32px; height: 32px;"></i>
+        </div>
+        <h1>Daftar Akun</h1>
+        <p>Buat akun kasir baru untuk karyawan</p>
+      </div>
+
+      <div id="alertBox" class="alert alert-error"></div>
+      <div id="successBox" class="alert alert-success"></div>
+
+      <form id="registerForm" novalidate>
+        <div class="form-group">
+          <label for="regNama">Nama Lengkap</label>
+          <input type="text" id="regNama" placeholder="Contoh: Budi Santoso" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input type="email" id="regEmail" placeholder="nama@email.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <div style="position:relative;">
+            <input type="password" id="regPassword" placeholder="Min. 6 karakter" required style="padding-right:42px;">
+            <button type="button" onclick="togglePw('regPassword','eyeReg')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0;">
+              <i data-lucide="eye" id="eyeReg" style="width:16px;height:16px;"></i>
+            </button>
+          </div>
+          <div class="password-strength" id="strengthBar" style="display:none;">
+            <div class="strength-track"><div class="strength-fill" id="strengthFill"></div></div>
+            <span id="strengthLabel"></span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="regConfirm">Konfirmasi Password</label>
+          <div style="position:relative;">
+            <input type="password" id="regConfirm" placeholder="Ulangi password" required style="padding-right:42px;">
+            <button type="button" onclick="togglePw('regConfirm','eyeConfirm')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0;">
+              <i data-lucide="eye" id="eyeConfirm" style="width:16px;height:16px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="info-box" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#1e40af;line-height:1.6;">
+          <i data-lucide="info" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>
+          Akun baru akan terdaftar sebagai <strong>Kasir</strong>. Hanya Admin yang bisa mengubah peran akun.
+          Setelah mendaftar, cek email Anda untuk verifikasi.
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="registerBtn">
+          <i data-lucide="user-plus" style="width:16px;height:16px;"></i> Daftar Sekarang
+        </button>
+      </form>
+
+      <div class="login-links">
+        <a href="login.html">
+          <i data-lucide="arrow-left" style="width:13px;height:13px;vertical-align:middle;"></i> Kembali ke Login
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script>
+    lucide.createIcons();
+
+    function togglePw(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon  = document.getElementById(iconId);
+      input.type = input.type === 'password' ? 'text' : 'password';
+      icon.setAttribute('data-lucide', input.type === 'password' ? 'eye' : 'eye-off');
+      lucide.createIcons();
+    }
+
+    // Password strength meter
+    document.getElementById('regPassword').addEventListener('input', function() {
+      const val = this.value;
+      const bar  = document.getElementById('strengthBar');
+      const fill = document.getElementById('strengthFill');
+      const lbl  = document.getElementById('strengthLabel');
+      if (!val) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
+
+      let score = 0;
+      if (val.length >= 6)  score++;
+      if (val.length >= 10) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+
+      const levels = [
+        { pct: '20%', color: '#ef4444', text: 'Sangat Lemah' },
+        { pct: '40%', color: '#f97316', text: 'Lemah' },
+        { pct: '60%', color: '#eab308', text: 'Cukup' },
+        { pct: '80%', color: '#22c55e', text: 'Kuat' },
+        { pct: '100%', color: '#10b981', text: 'Sangat Kuat' },
+      ];
+      const lvl = levels[Math.min(score - 1, 4)] || levels[0];
+      fill.style.width = lvl.pct;
+      fill.style.background = lvl.color;
+      lbl.textContent = lvl.text;
+      lbl.style.color = lvl.color;
+    });
+
+    const alertBox   = document.getElementById('alertBox');
+    const successBox = document.getElementById('successBox');
+
+    function showErr(msg) {
+      alertBox.textContent = msg;
+      alertBox.className = 'alert alert-error show';
+      successBox.classList.remove('show');
+    }
+    function showOk(msg) {
+      successBox.textContent = msg;
+      successBox.className = 'alert alert-success show';
+      alertBox.classList.remove('show');
+    }
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.classList.remove('show');
+      successBox.classList.remove('show');
+
+      const nama     = document.getElementById('regNama').value.trim();
+      const email    = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirm  = document.getElementById('regConfirm').value;
+      const btn      = document.getElementById('registerBtn');
+
+      if (!nama || !email || !password || !confirm) {
+        showErr('Semua field wajib diisi.'); return;
+      }
+      if (password.length < 6) {
+        showErr('Password minimal 6 karakter.'); return;
+      }
+      if (password !== confirm) {
+        showErr('Konfirmasi password tidak cocok.'); return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = 'Mendaftarkan...';
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { nama, role: 'kasir', status: 'aktif' },
+            emailRedirectTo: window.location.origin + '/login.html'
+          }
+        });
+
+        if (error) {
+          if (error.message.includes('already registered')) {
+            throw new Error('Email ini sudah terdaftar. Silakan login atau gunakan email lain.');
+          }
+          throw error;
+        }
+
+        // Jika email confirmation dimatikan di Supabase, langsung insert profile
+        if (data.user && !data.session) {
+          // Email confirmation aktif — profile akan dibuat via trigger setelah verifikasi
+          showOk('✅ Pendaftaran berhasil! Cek email Anda untuk verifikasi akun, lalu login.');
+        } else if (data.user && data.session) {
+          // Email confirmation dimatikan — profile langsung dibuat
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            email,
+            nama,
+            role: 'kasir',
+            status: 'aktif'
+          });
+          showOk('✅ Akun berhasil dibuat! Anda bisa login sekarang.');
+        }
+
+        document.getElementById('registerForm').reset();
+        document.getElementById('strengthBar').style.display = 'none';
+
+        setTimeout(() => { window.location.href = 'login.html'; }, 3000);
+
+      } catch (err) {
+        showErr(err.message || 'Gagal mendaftar. Coba lagi.');
+      } finally {
+        btn.disabled    = false;
+        btn.innerHTML   = '<i data-lucide="user-plus" style="width:16px;height:16px;"></i> Daftar Sekarang';
+        lucide.createIcons();
+      }
+    });
+  </script>
+</body>
+</html>

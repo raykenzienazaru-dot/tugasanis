@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Login Sistem Kasir - Point of Sale berbasis Supabase">
+  <meta name="description" content="Login Sistem Kasir Anis — Point of Sale">
   <title>Login — Kasir App</title>
   <link rel="stylesheet" href="css/style.css">
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
@@ -24,10 +23,10 @@
       <!-- Tab Role -->
       <div class="role-tabs">
         <button class="role-tab active" id="tabAdmin" onclick="switchTab('admin')">
-          <i data-lucide="user-check" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i> Admin
+          <i data-lucide="user-check" style="width: 15px; height: 15px; vertical-align: middle; margin-right: 4px;"></i> Admin
         </button>
         <button class="role-tab" id="tabKasir" onclick="switchTab('kasir')">
-          <i data-lucide="receipt" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i> Kasir
+          <i data-lucide="receipt" style="width: 15px; height: 15px; vertical-align: middle; margin-right: 4px;"></i> Kasir
         </button>
       </div>
 
@@ -40,32 +39,48 @@
         </div>
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+          <div style="position:relative;">
+            <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password" style="padding-right:42px;">
+            <button type="button" onclick="togglePassword()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0;">
+              <i data-lucide="eye" id="eyeIcon" style="width:16px;height:16px;"></i>
+            </button>
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary" id="loginBtn">Masuk</button>
+        <button type="submit" class="btn btn-primary" id="loginBtn">
+          <i data-lucide="log-in" style="width:16px;height:16px;"></i> Masuk
+        </button>
       </form>
 
-      <p style="text-align:center; margin-top:20px; font-size:12px; color:var(--text-muted);">
-        Hubungi administrator jika tidak bisa login
+      <div class="login-links">
+        <a href="forgot-password.html">🔑 Lupa Password?</a>
+        <span class="divider">·</span>
+        <a href="register.html">📝 Daftar Akun Baru</a>
+      </div>
+
+      <p style="text-align:center; margin-top:16px; font-size:11px; color:var(--text-muted);">
+        Hubungi administrator jika masih tidak bisa login
       </p>
     </div>
   </div>
 
-  <script>
-    function switchTab(role) {
-      document.getElementById('tabAdmin').classList.toggle('active', role === 'admin');
-      document.getElementById('tabKasir').classList.toggle('active', role === 'kasir');
-    }
-  </script>
-
-  <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <script src="js/supabase-config.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    // Initialize Lucide Icons
     lucide.createIcons();
+
+    function togglePassword() {
+      const input = document.getElementById('password');
+      const icon  = document.getElementById('eyeIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      lucide.createIcons();
+    }
   </script>
 </body>
 </html>

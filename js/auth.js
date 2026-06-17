@@ -1,40 +1,49 @@
 // ====================================================================
-// AUTH.JS — Logika login & pengecekan sesi (Supabase)
+// AUTH.JS — Logika login, register, logout (Supabase)
 // ====================================================================
 
+// ─── Halaman Login ───────────────────────────────────────────────
 const loginForm = document.getElementById('loginForm');
 const alertBox  = document.getElementById('alertBox');
 const loginBtn  = document.getElementById('loginBtn');
 
 function showAlert(message, type = 'error') {
+  if (!alertBox) return;
   alertBox.textContent = message;
   alertBox.className   = `alert alert-${type} show`;
 }
 
 function hideAlert() {
+  if (!alertBox) return;
   alertBox.classList.remove('show');
 }
 
-// Cek status sesi saat ini
+// Cek sesi aktif → langsung redirect ke dashboard
 supabase.auth.onAuthStateChange(async (event, session) => {
   const user = session?.user;
-  if (user && window.location.pathname.includes('login.html')) {
+  const path  = window.location.pathname;
+
+  // Jangan redirect dari halaman reset password
+  if (path.includes('reset-password.html')) return;
+
+  if (user && (path.includes('login.html') || path.endsWith('/') || path.includes('index.html'))) {
     try {
-      const { data: profile, error } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('role, status')
         .eq('id', user.id)
         .single();
 
-      if (profile && profile.status !== 'nonaktif') {
+      if (profile && profile.status === 'aktif') {
         window.location.href = 'dashboard.html';
       }
     } catch (err) {
-      console.error(err);
+      console.error('[AUTH] Error cek sesi:', err);
     }
   }
 });
 
+// ─── Form Login ──────────────────────────────────────────────────
 if (loginForm) {
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -43,21 +52,31 @@ if (loginForm) {
     const email    = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
 
+    if (!email || !password) {
+      showAlert('Email dan password wajib diisi.');
+      return;
+    }
+
     loginBtn.disabled    = true;
     loginBtn.textContent = 'Memproses...';
 
     try {
-      // 1. Sign in menggunakan Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
+      // 1. Login via Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message === 'Invalid login credentials') {
+          throw new Error('Email atau password salah. Pastikan email sudah diverifikasi.');
+        }
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error('Email belum diverifikasi. Cek inbox/spam email Anda.');
+        }
+        throw error;
+      }
 
       const user = data.user;
 
-      // 2. Dapatkan data profile user dari public.profiles
+      // 2. Ambil data profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -65,57 +84,69 @@ if (loginForm) {
         .single();
 
       if (profileError || !profile) {
-        showAlert('Akun ini belum memiliki profile terdaftar. Hubungi administrator.');
-        await supabase.auth.signOut();
-        loginBtn.disabled    = false;
-        loginBtn.textContent = 'Masuk';
+        // Profile belum ada → auto-insert (untuk admin yang dibuat manual)
+        const { error: insertErr } = await supabase.from('profiles').insert({
+          id:     user.id,
+          email:  user.email,
+          nama:   user.user_metadata?.nama || user.email.split('@')[0],
+          role:   user.user_metadata?.role || 'kasir',
+          status: 'aktif'
+        });
+        if (insertErr) {
+          await supabase.auth.signOut();
+          throw new Error('Gagal membuat profil akun. Hubungi administrator.');
+        }
+        window.location.href = 'dashboard.html';
         return;
       }
 
       if (profile.status === 'nonaktif') {
-        showAlert('Akun Anda telah dinonaktifkan. Hubungi administrator.');
         await supabase.auth.signOut();
-        loginBtn.disabled    = false;
-        loginBtn.textContent = 'Masuk';
-        return;
+        throw new Error('Akun Anda telah dinonaktifkan. Hubungi administrator.');
       }
 
-      // Validasi kecocokan role dengan tab login yang aktif
+      // 3. Validasi tab role
       const activeTab = document.querySelector('.role-tab.active');
-      const selectedRole = activeTab ? (activeTab.id === 'tabAdmin' ? 'admin' : 'kasir') : 'admin';
+      const selectedRole = activeTab
+        ? (activeTab.id === 'tabAdmin' ? 'admin' : 'kasir')
+        : 'admin';
 
       if (profile.role !== selectedRole) {
-        showAlert(`Akun ini tidak terdaftar sebagai ${selectedRole === 'admin' ? 'Admin' : 'Kasir'}.`);
         await supabase.auth.signOut();
-        loginBtn.disabled    = false;
-        loginBtn.textContent = 'Masuk';
-        return;
+        throw new Error(
+          `Akun ini terdaftar sebagai "${profile.role === 'admin' ? 'Admin' : 'Kasir'}". ` +
+          `Silakan pilih tab yang sesuai.`
+        );
       }
 
-      // 3. Simpan info ke localStorage untuk keperluan antarmuka (UI)
+      // 4. Simpan ke localStorage & redirect
       localStorage.setItem('userRole', profile.role);
       localStorage.setItem('userName', profile.nama || profile.email);
-
-      // 4. Pengalihan halaman ke dashboard
       window.location.href = 'dashboard.html';
 
-    } catch (error) {
-      loginBtn.disabled    = false;
-      loginBtn.textContent = 'Masuk';
-      
-      let msg = error.message;
-      if (msg === 'Invalid login credentials') {
-        msg = 'Email atau password salah.';
+    } catch (err) {
+      showAlert(err.message || 'Terjadi kesalahan. Coba lagi.');
+    } finally {
+      if (loginBtn) {
+        loginBtn.disabled    = false;
+        loginBtn.textContent = 'Masuk';
       }
-      showAlert('Gagal login: ' + msg);
     }
   });
 }
 
-// Fungsi logout
+// ─── Fungsi Logout ───────────────────────────────────────────────
 async function logoutUser() {
   await supabase.auth.signOut();
   localStorage.removeItem('userRole');
   localStorage.removeItem('userName');
   window.location.href = 'login.html';
+}
+
+// ─── Fungsi Switch Tab ──────────────────────────────────────────
+function switchTab(role) {
+  const tabAdmin = document.getElementById('tabAdmin');
+  const tabKasir = document.getElementById('tabKasir');
+  if (tabAdmin) tabAdmin.classList.toggle('active', role === 'admin');
+  if (tabKasir) tabKasir.classList.toggle('active', role === 'kasir');
 }
