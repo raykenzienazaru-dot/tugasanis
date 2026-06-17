@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Dashboard Sistem Kasir - Kelola transaksi, produk, dan laporan">
+  <title>Dashboard — Kasir App</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loadingScreen" class="loading-screen">
+    <div class="spinner"></div>
+    <p class="loading-text">Memuat dashboard...</p>
+  </div>
+
+  <!-- App Layout -->
+  <div class="app-layout" id="appLayout" style="display:none;">
+
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="shopping-cart" style="color: #fff; width: 18px; height: 18px;"></i>
+        </div>
+        <div class="brand-text">
+          Kasir App
+          <span>Point of Sale</span>
+        </div>
+      </div>
+
+      <nav id="navMenu">
+        <div class="nav-section-label">Menu Kasir</div>
+        <a data-view="kasir" class="nav-link active">
+          <i data-lucide="receipt" class="nav-icon" style="width: 18px; height: 18px;"></i>
+          <span class="label">Transaksi</span>
+        </a>
+        <a data-view="riwayat" class="nav-link">
+          <i data-lucide="history" class="nav-icon" style="width: 18px; height: 18px;"></i>
+          <span class="label">Riwayat</span>
+        </a>
+
+        <div class="nav-section-label admin-only" style="display:none;">Menu Admin</div>
+        <a data-view="produk" class="nav-link admin-only" style="display:none;">
+          <i data-lucide="package" class="nav-icon" style="width: 18px; height: 18px;"></i>
+          <span class="label">Produk</span>
+        </a>
+        <a data-view="kategori" class="nav-link admin-only" style="display:none;">
+          <i data-lucide="tag" class="nav-icon" style="width: 18px; height: 18px;"></i>
+          <span class="label">Kategori</span>
+        </a>
+        <a data-view="laporan" class="nav-link admin-only" style="display:none;">
+          <i data-lucide="bar-chart-3" class="nav-icon" style="width: 18px; height: 18px;"></i>
+          <span class="label">Laporan</span>
+        </a>
+        <a data-view="kasirManage" class="nav-link admin-only" style="display:none;">
+          <i data-lucide="users" class="nav-icon" style="width: 18px; height: 18px;"></i>
+          <span class="label">Kelola Akun</span>
+        </a>
+      </nav>
+
+      <div class="user-box">
+        <div class="user-name" id="sidebarUserName">-</div>
+        <span class="role-badge" id="sidebarRole">-</span>
+        <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="logoutUser()">Keluar</button>
+      </div>
+    </aside>
+
+    <!-- ===================== MAIN CONTENT ===================== -->
+    <div class="main-content">
+      <div class="topbar">
+        <h2 id="pageTitle">Transaksi Kasir</h2>
+        <div id="todayDate" style="color:var(--text-muted); font-size:12px;"></div>
+      </div>
+
+      <div class="page-content">
+
+        <!-- ============ VIEW: KASIR (POS) ============ -->
+        <section class="view active" id="view-kasir">
+          <div class="toolbar">
+            <input type="text" id="searchProduk" placeholder="Cari produk...">
+            <select id="filterKategori"><option value="">Semua Kategori</option></select>
+          </div>
+
+          <div class="pos-layout">
+            <div class="product-grid" id="productGrid">
+              <div class="empty-state">Memuat produk...</div>
+            </div>
+
+            <div class="cart-panel">
+              <div class="cart-header">🛒 Keranjang</div>
+              <div class="cart-items" id="cartItems">
+                <div class="empty-state">Belum ada item</div>
+              </div>
+              <div class="cart-footer">
+                <div class="cart-summary-row">
+                  <span>Subtotal</span>
+                  <span id="cartSubtotal">Rp 0</span>
+                </div>
+                <div class="cart-summary-row text-success" id="rowDiskon" style="display: none;">
+                  <span>Diskon (10% > 100k)</span>
+                  <span id="cartDiskon">-Rp 0</span>
+                </div>
+                <div class="cart-summary-row">
+                  <span>PPN (11%)</span>
+                  <span id="cartPpn">Rp 0</span>
+                </div>
+                <div class="cart-total-row">
+                  <span>Total Akhir</span>
+                  <span id="cartTotal">Rp 0</span>
+                </div>
+                <button class="btn btn-success" style="width:100%;" id="btnBayar" disabled>
+                  💳 Proses Pembayaran
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW: RIWAYAT TRANSAKSI ============ -->
+        <section class="view" id="view-riwayat">
+          <div class="card">
+            <div class="card-header">
+              <h3>Riwayat Transaksi</h3>
+            </div>
+            <div class="overflow-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>No. Transaksi</th>
+                    <th>Kasir</th>
+                    <th>Item</th>
+                    <th>Total</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="riwayatTableBody">
+                  <tr><td colspan="6" class="empty-state">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW: KELOLA PRODUK (ADMIN) ============ -->
+        <section class="view" id="view-produk">
+          <div class="card">
+            <div class="card-header">
+              <h3>Daftar Produk</h3>
+              <button class="btn btn-primary btn-sm" style="width:auto;" onclick="openProdukModal()">+ Tambah Produk</button>
+            </div>
+            <div class="overflow-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>Kategori</th>
+                    <th>Harga</th>
+                    <th>Stok</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="produkTableBody">
+                  <tr><td colspan="5" class="empty-state">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW: KATEGORI (ADMIN) ============ -->
+        <section class="view" id="view-kategori">
+          <div class="card">
+            <div class="card-header">
+              <h3>Kategori Produk</h3>
+              <button class="btn btn-primary btn-sm" style="width:auto;" onclick="openKategoriModal()">+ Tambah Kategori</button>
+            </div>
+            <div class="overflow-x">
+              <table>
+                <thead><tr><th>Nama Kategori</th><th>Aksi</th></tr></thead>
+                <tbody id="kategoriTableBody">
+                  <tr><td colspan="2" class="empty-state">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW: LAPORAN (ADMIN) ============ -->
+        <section class="view" id="view-laporan">
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+              <h3>Filter Laporan</h3>
+            </div>
+            <div class="card-body">
+              <div class="toolbar">
+                <input type="date" id="laporanTanggalMulai">
+                <input type="date" id="laporanTanggalAkhir">
+                <button class="btn btn-primary btn-sm" style="width:auto;" onclick="generateLaporan()">Tampilkan</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card blue">
+              <div class="label">Total Pendapatan</div>
+              <div class="value" id="laporanTotalPendapatan">Rp 0</div>
+            </div>
+            <div class="stat-card green">
+              <div class="label">Jumlah Transaksi</div>
+              <div class="value" id="laporanJumlahTransaksi">0</div>
+            </div>
+            <div class="stat-card orange">
+              <div class="label">Produk Terjual</div>
+              <div class="value" id="laporanProdukTerjual">0</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h3>Produk Terlaris</h3></div>
+            <div class="overflow-x">
+              <table>
+                <thead><tr><th>Nama Produk</th><th>Jumlah Terjual</th><th>Total Pendapatan</th></tr></thead>
+                <tbody id="laporanProdukTableBody">
+                  <tr><td colspan="3" class="empty-state">Pilih rentang tanggal lalu klik Tampilkan</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW: KELOLA AKUN KASIR (ADMIN) ============ -->
+        <section class="view" id="view-kasirManage">
+          <div class="card">
+            <div class="card-header">
+              <h3>Akun Kasir & Admin</h3>
+              <button class="btn btn-primary btn-sm" style="width:auto;" onclick="openKasirModal()">+ Tambah Akun</button>
+            </div>
+            <div class="overflow-x">
+              <table>
+                <thead>
+                  <tr><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Aksi</th></tr>
+                </thead>
+                <tbody id="kasirTableBody">
+                  <tr><td colspan="5" class="empty-state">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- end .page-content -->
+    </div><!-- end .main-content -->
+  </div><!-- end .app-layout -->
+
+  <!-- ===================== MODAL: TAMBAH/EDIT PRODUK ===================== -->
+  <div class="modal-overlay" id="modalProduk">
+    <div class="modal-box">
+      <div class="modal-header" id="produkModalTitle">Tambah Produk</div>
+      <div class="modal-body">
+        <input type="hidden" id="produkId">
+        <div class="form-group">
+          <label>Nama Produk</label>
+          <input type="text" id="produkNama" placeholder="Contoh: Indomie Goreng">
+        </div>
+        <div class="form-group">
+          <label>Kategori</label>
+          <select id="produkKategori"></select>
+        </div>
+        <div class="form-group">
+          <label>Harga (Rp)</label>
+          <input type="number" id="produkHarga" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>Stok</label>
+          <input type="number" id="produkStok" placeholder="0" min="0">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modalProduk')">Batal</button>
+        <button class="btn btn-primary" style="width:auto;" onclick="saveProduk()">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: TAMBAH KATEGORI ===================== -->
+  <div class="modal-overlay" id="modalKategori">
+    <div class="modal-box">
+      <div class="modal-header">Tambah Kategori</div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nama Kategori</label>
+          <input type="text" id="kategoriNama" placeholder="Contoh: Minuman">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modalKategori')">Batal</button>
+        <button class="btn btn-primary" style="width:auto;" onclick="saveKategori()">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: TAMBAH AKUN KASIR/ADMIN ===================== -->
+  <div class="modal-overlay" id="modalKasir">
+    <div class="modal-box">
+      <div class="modal-header">Tambah Akun</div>
+      <div class="modal-body">
+        <div id="kasirModalAlert" class="alert alert-error"></div>
+        <div class="form-group">
+          <label>Nama Lengkap</label>
+          <input type="text" id="kasirNama" placeholder="Nama kasir/admin">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="kasirEmail" placeholder="email@toko.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="kasirPassword" placeholder="Minimal 6 karakter">
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="kasirRole">
+            <option value="kasir">Kasir</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modalKasir')">Batal</button>
+        <button class="btn btn-primary" style="width:auto;" id="btnSaveKasir" onclick="saveKasirAccount()">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: STRUK PEMBAYARAN ===================== -->
+  <div class="modal-overlay" id="modalStruk">
+    <div class="modal-box">
+      <div class="modal-header">Struk Pembayaran</div>
+      <div class="modal-body">
+        <div class="receipt" id="strukContent"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modalStruk')">Tutup</button>
+        <button class="btn btn-primary" style="width:auto;" onclick="window.print()"><i data-lucide="printer" style="width: 16px; height: 16px; margin-right: 4px; vertical-align: middle;"></i> Cetak</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: DETAIL TRANSAKSI ===================== -->
+  <div class="modal-overlay" id="modalDetailTransaksi">
+    <div class="modal-box">
+      <div class="modal-header">Detail Transaksi</div>
+      <div class="modal-body">
+        <div id="detailTransaksiContent"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modalDetailTransaksi')">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="js/supabase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>
