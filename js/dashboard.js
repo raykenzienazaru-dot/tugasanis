@@ -222,6 +222,8 @@ async function deleteKategori(id) {
 // ====================================================================
 // 6. PRODUK
 // ====================================================================
+let stockChartInstance = null;
+
 function loadProduk() {
   fetchProduk();
 
@@ -248,6 +250,60 @@ async function fetchProduk() {
   allProduk = data;
   renderProdukGrid();
   renderProdukTable();
+  renderStockChart();
+}
+
+function renderStockChart() {
+  const canvas = document.getElementById('stockChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  if (stockChartInstance) {
+    stockChartInstance.destroy();
+  }
+
+  // Ambil maksimal 10 produk dengan stok paling sedikit (sebagai peringatan)
+  const sorted = [...allProduk].sort((a, b) => a.stok - b.stok).slice(0, 10);
+
+  const labels = sorted.map(p => p.nama);
+  const data = sorted.map(p => p.stok);
+  
+  // Warna merah untuk stok <= 5, biru untuk stok aman
+  const backgroundColors = sorted.map(p => p.stok <= 5 ? 'rgba(239, 68, 68, 0.75)' : 'rgba(79, 70, 229, 0.75)');
+  const borderColors = sorted.map(p => p.stok <= 5 ? 'rgb(239, 68, 68)' : 'rgb(79, 70, 229)');
+
+  stockChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Jumlah Stok',
+        data: data,
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0, 0, 0, 0.05)' },
+          ticks: { stepSize: 5 }
+        },
+        x: {
+          grid: { display: false }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
 }
 
 function getKategoriNama(id) {
@@ -527,6 +583,9 @@ function tampilkanStruk(transaksi) {
     diskonHtml = `<div class="row"><span>Diskon (10%)</span><span>-${formatRupiah(transaksi.diskon)}</span></div>`;
   }
 
+  // Generate QR Code URL
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(transaksi.no_transaksi)}`;
+
   document.getElementById('strukContent').innerHTML = `
     <div class="center"><strong>KASIR APP</strong><br>${tanggal}<br>No: ${transaksi.no_transaksi}<br>Kasir: ${escapeHtml(transaksi.kasir_nama)}</div>
     <hr>${itemsHtml}<hr>
@@ -535,7 +594,13 @@ function tampilkanStruk(transaksi) {
     <div class="row"><span>PPN (11%)</span><span>${formatRupiah(transaksi.ppn)}</span></div>
     <hr>
     <div class="row"><strong>TOTAL</strong><strong>${formatRupiah(transaksi.total)}</strong></div>
-    <hr><div class="center">Terima kasih atas pembelian Anda</div>
+    <hr>
+    <div class="center" style="margin-top:10px; margin-bottom:10px;">
+      <img src="${qrCodeUrl}" alt="QR Code" style="width:120px; height:120px; border:1px solid var(--border); padding:4px; border-radius:4px; background:white;"/>
+      <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Scan Transaksi</div>
+    </div>
+    <hr>
+    <div class="center">Terima kasih atas pembelian Anda</div>
   `;
   openModal('modalStruk');
 }

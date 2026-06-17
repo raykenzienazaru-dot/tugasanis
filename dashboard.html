@@ -148,6 +148,16 @@
 
         <!-- ============ VIEW: KELOLA PRODUK (ADMIN) ============ -->
         <section class="view" id="view-produk">
+          <!-- Grafik Level Stok -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
+              <h3><i data-lucide="bar-chart-2" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;color:var(--primary);"></i> Grafik Level Stok Produk</h3>
+            </div>
+            <div class="card-body" style="padding: 16px; min-height: 200px; display: flex; justify-content: center; align-items: center;">
+              <canvas id="stockChart" style="max-height: 200px; width: 100%;"></canvas>
+            </div>
+          </div>
+
           <div class="card">
             <div class="card-header">
               <h3>Daftar Produk</h3>
@@ -363,6 +373,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
