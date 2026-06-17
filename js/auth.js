@@ -2,6 +2,9 @@
 // AUTH.JS — Logika login, register, logout (Supabase)
 // ====================================================================
 
+const currentPath = window.location.pathname;
+const isEntryPage = currentPath.includes('login.html') || currentPath.includes('register.html') || currentPath.endsWith('/') || currentPath.endsWith('index.html');
+
 // ─── Halaman Login ───────────────────────────────────────────────
 const loginForm = document.getElementById('loginForm');
 const alertBox  = document.getElementById('alertBox');
