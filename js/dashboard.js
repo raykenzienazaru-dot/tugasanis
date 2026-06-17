@@ -11,16 +11,26 @@ let allTransaksi     = [];
 let allKasirAccounts = [];
 let dashboardInitialized = false;
 let isProcessingPayment = false;
+let authCheckStarted = false;
+let dashboardBooting = false;
 
 // --------------------------------------------------------------------
 // 1. AUTH GUARD
 // --------------------------------------------------------------------
-supabase.auth.onAuthStateChange(async (event, session) => {
-  const user = session?.user;
+async function redirectToLogin(reason = 'no-session') {
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('userName');
+  window.location.href = `login.html?reason=${encodeURIComponent(reason)}`;
+}
+
+async function bootDashboard(user) {
   if (!user) {
-    window.location.href = 'login.html';
+    redirectToLogin('no-session');
     return;
   }
+
+  if (dashboardInitialized || dashboardBooting) return;
+  dashboardBooting = true;
 
   currentUser = user;
 
@@ -32,10 +42,23 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       .eq('id', user.id)
       .single();
 
-    if (error || !profile || profile.status === 'nonaktif') {
-      alert('Akun Anda tidak memiliki akses atau telah dinonaktifkan.');
+    if (error) {
+      console.error('Gagal memuat profile:', error);
+      alert('Gagal memuat data akun. Pastikan database sudah memakai schema terbaru.');
+      return;
+    }
+
+    if (!profile) {
+      alert('Profile akun tidak ditemukan. Silakan login ulang atau hubungi administrator.');
       await supabase.auth.signOut();
-      window.location.href = 'login.html';
+      redirectToLogin('profile-missing');
+      return;
+    }
+
+    if (profile.status === 'nonaktif') {
+      alert('Akun Anda telah dinonaktifkan.');
+      await supabase.auth.signOut();
+      redirectToLogin('inactive');
       return;
     }
 
@@ -50,8 +73,44 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   } catch (err) {
     console.error('Gagal memuat data user:', err);
     alert('Terjadi kesalahan saat memuat data akun Anda.');
+  } finally {
+    if (!dashboardInitialized) {
+      dashboardBooting = false;
+    }
+  }
+}
+
+async function initAuthGuard() {
+  if (authCheckStarted) return;
+  authCheckStarted = true;
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error('Gagal membaca sesi:', error);
+    redirectToLogin('session-error');
+    return;
+  }
+
+  if (!data.session?.user) {
+    redirectToLogin('no-session');
+    return;
+  }
+
+  bootDashboard(data.session.user);
+}
+
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    redirectToLogin('signed-out');
+    return;
+  }
+
+  if (session?.user && !dashboardInitialized) {
+    bootDashboard(session.user);
   }
 });
+
+initAuthGuard();
 
 // --------------------------------------------------------------------
 // 2. INISIALISASI DASHBOARD

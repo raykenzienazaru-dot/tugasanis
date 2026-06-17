@@ -18,15 +18,16 @@ function hideAlert() {
   alertBox.classList.remove('show');
 }
 
-// Cek sesi aktif → langsung redirect ke dashboard
-supabase.auth.onAuthStateChange(async (event, session) => {
-  const user = session?.user;
-  const path  = window.location.pathname;
+// Cek sesi aktif hanya di halaman login/index -> langsung redirect dashboard.
+// Dashboard punya guard sendiri, jadi auth.js tidak ikut campur di sana.
+const currentPath = window.location.pathname;
+const isEntryPage = currentPath.includes('login.html') || currentPath.endsWith('/') || currentPath.includes('index.html');
 
-  // Jangan redirect dari halaman reset password
-  if (path.includes('reset-password.html')) return;
+if (isEntryPage && !currentPath.includes('reset-password.html')) {
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    const user = session?.user;
+    if (!user) return;
 
-  if (user && (path.includes('login.html') || path.endsWith('/') || path.includes('index.html'))) {
     try {
       const { data: profile } = await supabase
         .from('profiles')
@@ -40,8 +41,8 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     } catch (err) {
       console.error('[AUTH] Error cek sesi:', err);
     }
-  }
-});
+  });
+}
 
 // ─── Form Login ──────────────────────────────────────────────────
 if (loginForm) {
@@ -119,10 +120,9 @@ if (loginForm) {
         : 'admin';
 
       if (profile.role !== selectedRole) {
-        await supabase.auth.signOut();
-        throw new Error(
-          `Akun ini terdaftar sebagai "${profile.role === 'admin' ? 'Admin' : 'Kasir'}". ` +
-          `Silakan pilih tab yang sesuai.`
+        console.info(
+          `[AUTH] Tab login "${selectedRole}" tidak sama dengan role akun "${profile.role}". ` +
+          'Login tetap dilanjutkan sesuai role dari database.'
         );
       }
 
