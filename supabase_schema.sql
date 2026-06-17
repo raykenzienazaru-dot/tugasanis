@@ -1,6 +1,6 @@
 -- ====================================================================
 -- SUPABASE_SCHEMA.SQL — Setup lengkap: tabel, RLS, trigger & akun admin
--- Salin SELURUH isi file ini → paste di SQL Editor Supabase → Run
+-- Salin SELURUH isi file ini → paste di SQL Editor Supabase → RUN (▶)
 --
 -- Admin:
 --   Email   : nurulanissamusthapa@gmail.com
@@ -117,26 +117,39 @@ alter table public.transaction_items enable row level security;
 
 -- ----------------------------------------------------------------
 -- 9. RLS Policies — Profiles
+--    PENTING: Gunakan auth.jwt() bukan query ke profiles itu sendiri
+--    supaya tidak infinite recursion!
 -- ----------------------------------------------------------------
-drop policy if exists "Baca semua profiles"     on public.profiles;
-drop policy if exists "Update profile sendiri"  on public.profiles;
-drop policy if exists "Admin kelola profiles"   on public.profiles;
-drop policy if exists "Baca profiles sendiri"   on public.profiles;
+drop policy if exists "Baca semua profiles"    on public.profiles;
+drop policy if exists "Update profile sendiri" on public.profiles;
+drop policy if exists "Admin kelola profiles"  on public.profiles;
+drop policy if exists "Baca profiles sendiri"  on public.profiles;
 drop policy if exists "Dapat dibaca oleh user terautentikasi" on public.profiles;
 drop policy if exists "Admin dapat mengubah profile"          on public.profiles;
 
+-- Semua user login bisa baca semua profile
 create policy "Baca semua profiles" on public.profiles
   for select using (auth.role() = 'authenticated');
 
+-- User bisa update profile sendiri
 create policy "Update profile sendiri" on public.profiles
   for update using (auth.uid() = id);
 
-create policy "Admin kelola profiles" on public.profiles
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin' and status = 'aktif'
-    )
+-- Admin bisa insert/delete/update semua profile
+-- GUNAKAN JWT metadata bukan subquery ke profiles (cegah infinite recursion)
+create policy "Admin insert profiles" on public.profiles
+  for insert with check (
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+  );
+
+create policy "Admin update profiles" on public.profiles
+  for update using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+  );
+
+create policy "Admin delete profiles" on public.profiles
+  for delete using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- ----------------------------------------------------------------
@@ -152,10 +165,7 @@ create policy "Baca kategori" on public.categories
 
 create policy "Admin kelola kategori" on public.categories
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin' and status = 'aktif'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- ----------------------------------------------------------------
@@ -164,9 +174,9 @@ create policy "Admin kelola kategori" on public.categories
 drop policy if exists "Baca produk"        on public.products;
 drop policy if exists "Update stok produk" on public.products;
 drop policy if exists "Admin kelola produk" on public.products;
-drop policy if exists "Dapat dibaca oleh semua user terautentikasi"             on public.products;
+drop policy if exists "Dapat dibaca oleh semua user terautentikasi"              on public.products;
 drop policy if exists "Admin dan Kasir dapat mengupdate produk (untuk kurangi stok)" on public.products;
-drop policy if exists "Admin dapat mengelola produk"                             on public.products;
+drop policy if exists "Admin dapat mengelola produk"                              on public.products;
 
 create policy "Baca produk" on public.products
   for select using (auth.role() = 'authenticated');
@@ -176,10 +186,7 @@ create policy "Update stok produk" on public.products
 
 create policy "Admin kelola produk" on public.products
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin' and status = 'aktif'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- ----------------------------------------------------------------
@@ -188,9 +195,9 @@ create policy "Admin kelola produk" on public.products
 drop policy if exists "Baca transaksi"         on public.transactions;
 drop policy if exists "Buat transaksi"         on public.transactions;
 drop policy if exists "Admin kelola transaksi" on public.transactions;
-drop policy if exists "Dapat dibaca oleh semua user terautentikasi"         on public.transactions;
-drop policy if exists "Semua user terautentikasi dapat membuat transaksi"    on public.transactions;
-drop policy if exists "Admin dapat mengelola semua transaksi"                on public.transactions;
+drop policy if exists "Dapat dibaca oleh semua user terautentikasi"       on public.transactions;
+drop policy if exists "Semua user terautentikasi dapat membuat transaksi"  on public.transactions;
+drop policy if exists "Admin dapat mengelola semua transaksi"              on public.transactions;
 
 create policy "Baca transaksi" on public.transactions
   for select using (auth.role() = 'authenticated');
@@ -200,10 +207,7 @@ create policy "Buat transaksi" on public.transactions
 
 create policy "Admin kelola transaksi" on public.transactions
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin' and status = 'aktif'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- ----------------------------------------------------------------
@@ -212,9 +216,9 @@ create policy "Admin kelola transaksi" on public.transactions
 drop policy if exists "Baca item transaksi"         on public.transaction_items;
 drop policy if exists "Buat item transaksi"         on public.transaction_items;
 drop policy if exists "Admin kelola item transaksi" on public.transaction_items;
-drop policy if exists "Dapat dibaca oleh semua user terautentikasi"              on public.transaction_items;
-drop policy if exists "Semua user terautentikasi dapat membuat item transaksi"   on public.transaction_items;
-drop policy if exists "Admin dapat mengelola item transaksi"                     on public.transaction_items;
+drop policy if exists "Dapat dibaca oleh semua user terautentikasi"            on public.transaction_items;
+drop policy if exists "Semua user terautentikasi dapat membuat item transaksi"  on public.transaction_items;
+drop policy if exists "Admin dapat mengelola item transaksi"                    on public.transaction_items;
 
 create policy "Baca item transaksi" on public.transaction_items
   for select using (auth.role() = 'authenticated');
@@ -224,10 +228,7 @@ create policy "Buat item transaksi" on public.transaction_items
 
 create policy "Admin kelola item transaksi" on public.transaction_items
   for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin' and status = 'aktif'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
   );
 
 -- ================================================================
@@ -238,8 +239,7 @@ create policy "Admin kelola item transaksi" on public.transaction_items
 
 -- Hapus user lama jika sudah ada (cegah duplikat)
 do $$
-declare
-  v_uid uuid;
+declare v_uid uuid;
 begin
   select id into v_uid from auth.users where email = 'nurulanissamusthapa@gmail.com';
   if v_uid is not null then
@@ -250,46 +250,21 @@ end $$;
 
 -- Buat user baru di auth.users dengan password bcrypt
 insert into auth.users (
-  instance_id,
-  id,
-  aud,
-  role,
-  email,
-  encrypted_password,
-  email_confirmed_at,
-  invited_at,
-  confirmation_token,
-  confirmation_sent_at,
-  recovery_token,
-  recovery_sent_at,
-  email_change_token_new,
-  email_change,
-  email_change_sent_at,
-  last_sign_in_at,
-  raw_app_meta_data,
-  raw_user_meta_data,
-  is_super_admin,
-  created_at,
-  updated_at,
-  phone,
-  phone_confirmed_at,
-  phone_change,
-  phone_change_token,
-  phone_change_sent_at,
-  email_change_token_current,
-  email_change_confirm_status,
-  banned_until,
-  reauthentication_token,
-  reauthentication_sent_at
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, invited_at, confirmation_token, confirmation_sent_at,
+  recovery_token, recovery_sent_at, email_change_token_new, email_change,
+  email_change_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+  is_super_admin, created_at, updated_at, phone, phone_confirmed_at,
+  phone_change, phone_change_token, phone_change_sent_at,
+  email_change_token_current, email_change_confirm_status,
+  banned_until, reauthentication_token, reauthentication_sent_at
 ) values (
   '00000000-0000-0000-0000-000000000000',
   gen_random_uuid(),
-  'authenticated',
-  'authenticated',
+  'authenticated', 'authenticated',
   'nurulanissamusthapa@gmail.com',
   crypt('admin123', gen_salt('bf')),
-  now(),   -- email langsung terverifikasi
-  null, '', null, '', null, '', '', null, now(),
+  now(), null, '', null, '', null, '', '', null, now(),
   '{"provider":"email","providers":["email"]}',
   '{"nama":"Admin","role":"admin","status":"aktif"}',
   false, now(), now(),
@@ -305,8 +280,7 @@ on conflict (id) do update
   set role = 'admin', status = 'aktif', nama = 'Admin';
 
 -- ================================================================
--- 15. VERIFIKASI — Pastikan hasilnya seperti ini:
---   email_verified = true | role = admin | status = aktif
+-- 15. VERIFIKASI HASIL — Harus muncul: email_verified=true, role=admin
 -- ================================================================
 select
   au.id,
