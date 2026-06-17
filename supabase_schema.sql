@@ -1,9 +1,14 @@
 -- ====================================================================
--- SUPABASE_SCHEMA.SQL v2 — Salin & jalankan di SQL Editor Supabase
+-- SUPABASE_SCHEMA.SQL — Setup lengkap: tabel, RLS, trigger & akun admin
+-- Salin SELURUH isi file ini → paste di SQL Editor Supabase → Run
+--
+-- Admin:
+--   Email   : nurulanissamusthapa@gmail.com
+--   Password: admin123
 -- ====================================================================
 
 -- ----------------------------------------------------------------
--- 1. Hapus tabel lama jika ada (urutan harus benar karena foreign key)
+-- 1. Hapus tabel lama (urutan penting karena foreign key)
 -- ----------------------------------------------------------------
 drop table if exists public.transaction_items cascade;
 drop table if exists public.transactions      cascade;
@@ -73,7 +78,7 @@ create table public.transaction_items (
 );
 
 -- ----------------------------------------------------------------
--- 7. Trigger: Otomatis buat profile saat user Auth baru dibuat
+-- 7. Trigger: otomatis buat profile saat user Auth baru dibuat
 -- ----------------------------------------------------------------
 create or replace function public.handle_new_user()
 returns trigger
@@ -104,30 +109,28 @@ create trigger on_auth_user_created
 -- ----------------------------------------------------------------
 -- 8. Enable Row Level Security
 -- ----------------------------------------------------------------
-alter table public.profiles         enable row level security;
-alter table public.categories       enable row level security;
-alter table public.products         enable row level security;
-alter table public.transactions     enable row level security;
+alter table public.profiles          enable row level security;
+alter table public.categories        enable row level security;
+alter table public.products          enable row level security;
+alter table public.transactions      enable row level security;
 alter table public.transaction_items enable row level security;
 
 -- ----------------------------------------------------------------
 -- 9. RLS Policies — Profiles
 -- ----------------------------------------------------------------
-drop policy if exists "Baca profiles sendiri" on public.profiles;
-drop policy if exists "Baca semua profiles" on public.profiles;
-drop policy if exists "Admin kelola profiles" on public.profiles;
+drop policy if exists "Baca semua profiles"     on public.profiles;
+drop policy if exists "Update profile sendiri"  on public.profiles;
+drop policy if exists "Admin kelola profiles"   on public.profiles;
+drop policy if exists "Baca profiles sendiri"   on public.profiles;
 drop policy if exists "Dapat dibaca oleh user terautentikasi" on public.profiles;
-drop policy if exists "Admin dapat mengubah profile" on public.profiles;
+drop policy if exists "Admin dapat mengubah profile"          on public.profiles;
 
--- Semua user login bisa baca semua profile (untuk kelola akun)
 create policy "Baca semua profiles" on public.profiles
   for select using (auth.role() = 'authenticated');
 
--- User bisa update profile sendiri
 create policy "Update profile sendiri" on public.profiles
   for update using (auth.uid() = id);
 
--- Admin bisa insert/update/delete semua profile
 create policy "Admin kelola profiles" on public.profiles
   for all using (
     exists (
@@ -139,10 +142,10 @@ create policy "Admin kelola profiles" on public.profiles
 -- ----------------------------------------------------------------
 -- 10. RLS Policies — Kategori
 -- ----------------------------------------------------------------
-drop policy if exists "Baca kategori" on public.categories;
+drop policy if exists "Baca kategori"         on public.categories;
 drop policy if exists "Admin kelola kategori" on public.categories;
 drop policy if exists "Dapat dibaca oleh semua user terautentikasi" on public.categories;
-drop policy if exists "Admin dapat mengelola kategori" on public.categories;
+drop policy if exists "Admin dapat mengelola kategori"              on public.categories;
 
 create policy "Baca kategori" on public.categories
   for select using (auth.role() = 'authenticated');
@@ -158,12 +161,12 @@ create policy "Admin kelola kategori" on public.categories
 -- ----------------------------------------------------------------
 -- 11. RLS Policies — Produk
 -- ----------------------------------------------------------------
-drop policy if exists "Baca produk" on public.products;
+drop policy if exists "Baca produk"        on public.products;
 drop policy if exists "Update stok produk" on public.products;
 drop policy if exists "Admin kelola produk" on public.products;
-drop policy if exists "Dapat dibaca oleh semua user terautentikasi" on public.products;
+drop policy if exists "Dapat dibaca oleh semua user terautentikasi"             on public.products;
 drop policy if exists "Admin dan Kasir dapat mengupdate produk (untuk kurangi stok)" on public.products;
-drop policy if exists "Admin dapat mengelola produk" on public.products;
+drop policy if exists "Admin dapat mengelola produk"                             on public.products;
 
 create policy "Baca produk" on public.products
   for select using (auth.role() = 'authenticated');
@@ -182,12 +185,12 @@ create policy "Admin kelola produk" on public.products
 -- ----------------------------------------------------------------
 -- 12. RLS Policies — Transaksi
 -- ----------------------------------------------------------------
-drop policy if exists "Baca transaksi" on public.transactions;
-drop policy if exists "Buat transaksi" on public.transactions;
+drop policy if exists "Baca transaksi"         on public.transactions;
+drop policy if exists "Buat transaksi"         on public.transactions;
 drop policy if exists "Admin kelola transaksi" on public.transactions;
-drop policy if exists "Dapat dibaca oleh semua user terautentikasi" on public.transactions;
-drop policy if exists "Semua user terautentikasi dapat membuat transaksi" on public.transactions;
-drop policy if exists "Admin dapat mengelola semua transaksi" on public.transactions;
+drop policy if exists "Dapat dibaca oleh semua user terautentikasi"         on public.transactions;
+drop policy if exists "Semua user terautentikasi dapat membuat transaksi"    on public.transactions;
+drop policy if exists "Admin dapat mengelola semua transaksi"                on public.transactions;
 
 create policy "Baca transaksi" on public.transactions
   for select using (auth.role() = 'authenticated');
@@ -206,12 +209,12 @@ create policy "Admin kelola transaksi" on public.transactions
 -- ----------------------------------------------------------------
 -- 13. RLS Policies — Item Transaksi
 -- ----------------------------------------------------------------
-drop policy if exists "Baca item transaksi" on public.transaction_items;
-drop policy if exists "Buat item transaksi" on public.transaction_items;
+drop policy if exists "Baca item transaksi"         on public.transaction_items;
+drop policy if exists "Buat item transaksi"         on public.transaction_items;
 drop policy if exists "Admin kelola item transaksi" on public.transaction_items;
-drop policy if exists "Dapat dibaca oleh semua user terautentikasi" on public.transaction_items;
-drop policy if exists "Semua user terautentikasi dapat membuat item transaksi" on public.transaction_items;
-drop policy if exists "Admin dapat mengelola item transaksi" on public.transaction_items;
+drop policy if exists "Dapat dibaca oleh semua user terautentikasi"              on public.transaction_items;
+drop policy if exists "Semua user terautentikasi dapat membuat item transaksi"   on public.transaction_items;
+drop policy if exists "Admin dapat mengelola item transaksi"                     on public.transaction_items;
 
 create policy "Baca item transaksi" on public.transaction_items
   for select using (auth.role() = 'authenticated');
@@ -228,31 +231,90 @@ create policy "Admin kelola item transaksi" on public.transaction_items
   );
 
 -- ================================================================
--- 14. BUAT / PERBAIKI AKUN ADMIN
---
--- Akun admin:
---   Email    : nurulanissamusthapa@gmail.com
---   Password : admin123
---
--- LANGKAH:
---   1. Buka Supabase Dashboard → Authentication → Users → Add User
---   2. Isi Email: nurulanissamusthapa@gmail.com
---   3. Isi Password: admin123
---   4. Klik Save
---   5. Jalankan query di bawah ini di SQL Editor
+-- 14. BUAT AKUN ADMIN LANGSUNG (tanpa perlu UI Supabase)
+--     Email   : nurulanissamusthapa@gmail.com
+--     Password: admin123
 -- ================================================================
 
-INSERT INTO public.profiles (id, email, nama, role, status)
-SELECT id, email, 'Admin', 'admin', 'aktif'
-FROM auth.users
-WHERE email = 'nurulanissamusthapa@gmail.com'
-ON CONFLICT (id) DO UPDATE
-  SET role = 'admin', status = 'aktif', nama = 'Admin';
+-- Hapus user lama jika sudah ada (cegah duplikat)
+do $$
+declare
+  v_uid uuid;
+begin
+  select id into v_uid from auth.users where email = 'nurulanissamusthapa@gmail.com';
+  if v_uid is not null then
+    delete from public.profiles where id = v_uid;
+    delete from auth.users    where id = v_uid;
+  end if;
+end $$;
+
+-- Buat user baru di auth.users dengan password bcrypt
+insert into auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  invited_at,
+  confirmation_token,
+  confirmation_sent_at,
+  recovery_token,
+  recovery_sent_at,
+  email_change_token_new,
+  email_change,
+  email_change_sent_at,
+  last_sign_in_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  is_super_admin,
+  created_at,
+  updated_at,
+  phone,
+  phone_confirmed_at,
+  phone_change,
+  phone_change_token,
+  phone_change_sent_at,
+  email_change_token_current,
+  email_change_confirm_status,
+  banned_until,
+  reauthentication_token,
+  reauthentication_sent_at
+) values (
+  '00000000-0000-0000-0000-000000000000',
+  gen_random_uuid(),
+  'authenticated',
+  'authenticated',
+  'nurulanissamusthapa@gmail.com',
+  crypt('admin123', gen_salt('bf')),
+  now(),   -- email langsung terverifikasi
+  null, '', null, '', null, '', '', null, now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"nama":"Admin","role":"admin","status":"aktif"}',
+  false, now(), now(),
+  null, null, '', '', null, '', 0, null, '', null
+);
+
+-- Buat profile admin (backup jika trigger belum jalan)
+insert into public.profiles (id, email, nama, role, status)
+select id, email, 'Admin', 'admin', 'aktif'
+from auth.users
+where email = 'nurulanissamusthapa@gmail.com'
+on conflict (id) do update
+  set role = 'admin', status = 'aktif', nama = 'Admin';
 
 -- ================================================================
--- 15. VERIFIKASI — Jalankan ini untuk memastikan data sudah benar
+-- 15. VERIFIKASI — Pastikan hasilnya seperti ini:
+--   email_verified = true | role = admin | status = aktif
 -- ================================================================
--- SELECT au.id, au.email, p.nama, p.role, p.status
--- FROM auth.users au
--- LEFT JOIN public.profiles p ON p.id = au.id
--- WHERE au.email = 'nurulanissamusthapa@gmail.com';
+select
+  au.id,
+  au.email,
+  au.email_confirmed_at is not null as email_verified,
+  p.nama,
+  p.role,
+  p.status
+from auth.users au
+join public.profiles p on p.id = au.id
+where au.email = 'nurulanissamusthapa@gmail.com';
