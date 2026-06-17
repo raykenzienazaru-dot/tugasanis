@@ -276,6 +276,7 @@ declare
   v_keuntungan   numeric(14, 2) := 0;
   v_items        jsonb := '[]'::jsonb;
   v_coupon       record;
+  v_coupon_id    uuid := null;
 begin
   if auth.uid() is null then
     raise exception 'Login diperlukan.';
@@ -368,6 +369,7 @@ begin
     end if;
 
     v_coupon_diskon := v_coupon.potongan;
+    v_coupon_id     := v_coupon.id;
   end if;
 
   v_diskon := v_auto_diskon + v_coupon_diskon;
@@ -406,16 +408,16 @@ begin
     p_metode_pembayaran,
     case when p_metode_pembayaran = 'Tunai' then p_nominal_bayar else v_total end,
     case when p_metode_pembayaran = 'Tunai' then p_kembalian else 0.00 end,
-    case when v_coupon.id is not null then v_coupon.id else null end,
+    v_coupon_id,
     v_keuntungan
   )
   returning transactions.id into v_trx_id;
 
   -- Update kupon terpakai
-  if v_coupon.id is not null then
+  if v_coupon_id is not null then
     update public.coupons
     set terpakai = terpakai + 1
-    where id = v_coupon.id;
+    where id = v_coupon_id;
   end if;
 
   for v_item in
