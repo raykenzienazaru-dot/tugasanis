@@ -124,15 +124,34 @@ body {
 }
 
 .login-box .logo .logo-icon {
-  width: 68px;
-  height: 68px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
-  border-radius: var(--radius-md);
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border-radius: 20px;
+
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 16px;
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+
+  box-shadow:
+    0 12px 30px rgba(79, 70, 229, 0.4),
+    0 0 0 2px rgba(255,255,255,0.15);
+}
+
+/* Font Awesome / Remix Icon / Bootstrap Icon */
+.login-box .logo .logo-icon i {
+  font-size: 36px;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+/* Jika menggunakan SVG */
+.login-box .logo .logo-icon svg {
+  width: 36px;
+  height: 36px;
+  stroke: #ffffff;
+  fill: #ffffff;
 }
 
 .login-box .logo h1 {
