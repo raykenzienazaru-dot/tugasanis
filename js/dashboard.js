@@ -557,14 +557,24 @@ function renderProdukTable() {
           ` : ''}
         </div>
       </td>
-      <td><strong>${escapeHtml(p.nama)}</strong></td>
-      <td>${escapeHtml(getKategoriNama(p.category_id))}</td>
-      <td>${formatRupiah(p.harga_beli || 0)}</td>
-      <td>${formatRupiah(p.harga)}</td>
-      <td><span class="stock-badge ${p.stok <= 5 ? 'low' : ''}">${p.stok}</span></td>
-      <td>
-        <button class="btn btn-secondary btn-sm" onclick="editProduk('${p.id}')">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteProduk('${p.id}')">Hapus</button>
+            <td><strong>${escapeHtml(p.nama)}</strong></td>
+            <td>${escapeHtml(getKategoriNama(p.category_id))}</td>
+            <td>${formatRupiah(p.harga_beli || 0)}</td>
+            <td>${formatRupiah(p.harga)}</td>
+            <td><span class="stock-badge ${p.stok <= 5 ? 'low' : ''}">${p.stok}</span></td>
+            <td>
+        ${
+          currentUserData.role === 'admin'
+            ? `
+              <button class="btn btn-secondary btn-sm" onclick="editProduk('${p.id}')">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteProduk('${p.id}')">Hapus</button>
+            `
+            : `
+              <span style="color:var(--text-muted);font-size:12px;">
+                Read Only
+              </span>
+            `
+        }
       </td>
     </tr>
   `).join('');
@@ -608,6 +618,9 @@ function openProdukModal() {
   document.getElementById('produkHarga').value            = '';
   document.getElementById('produkStok').value             = '';
   renderKategoriDropdowns();
+  document.getElementById('produkNama').readOnly = false;
+document.getElementById('produkBarcode').readOnly = false;
+document.getElementById('produkKategori').disabled = false;
   openModal('modalProduk');
 }
 
@@ -623,6 +636,10 @@ function editProduk(id) {
   document.getElementById('produkStok').value             = p.stok;
   renderKategoriDropdowns();
   document.getElementById('produkKategori').value = p.category_id || '';
+  document.getElementById('produkNama').disabled = true;
+  document.getElementById('produkBarcode').disabled = true;
+  document.getElementById('produkKategori').disabled = true;
+  console.log('MODE EDIT AKTIF');  
   openModal('modalProduk');
 }
 
@@ -635,42 +652,71 @@ async function saveProduk() {
   const harga       = Number(document.getElementById('produkHarga').value);
   const stok        = Number(document.getElementById('produkStok').value);
 
-  if (!nama || harga <= 0) { alert('Nama dan harga produk wajib diisi dengan benar.'); return; }
+  // Cek nama produk duplikat
+const existingProduct = allProduk.find(
+  p =>
+    p.nama.toLowerCase() === nama.toLowerCase() &&
+    p.id !== id
+);
 
-  const data = { 
-    nama, 
-    category_id: category_id || null, 
+if (existingProduct) {
+  alert('Produk dengan nama tersebut sudah tersedia.');
+  return;
+}
+
+// Cek barcode duplikat
+if (barcode) {
+  const existingBarcode = allProduk.find(
+    p =>
+      p.barcode === barcode &&
+      p.id !== id
+  );
+
+  if (existingBarcode) {
+    alert('Barcode sudah digunakan produk lain.');
+    return;
+  }
+}
+
+  if (!nama || harga <= 0) {
+    alert('Nama dan harga produk wajib diisi.');
+    return;
+  }
+
+  const data = {
+    nama,
+    category_id: category_id || null,
     barcode,
     harga_beli,
-    harga, 
-    stok: stok || 0 
+    harga,
+    stok: stok || 0
   };
+
   try {
+
     if (id) {
       const { error } = await supabase
         .from('products')
         .update(data)
         .eq('id', id);
+
       if (error) throw error;
     } else {
       const { error } = await supabase
         .from('products')
         .insert([data]);
+
       if (error) throw error;
     }
-    closeModal('modalProduk');
-  } catch (err) { alert('Gagal menyimpan produk: ' + err.message); }
-}
 
-async function deleteProduk(id) {
-  if (!confirm('Hapus produk ini?')) return;
-  try {
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
-  } catch (err) { alert('Gagal menghapus produk: ' + err.message); }
+    // refresh langsung
+    await fetchProduk();
+
+    closeModal('modalProduk');
+
+  } catch (err) {
+    alert('Gagal menyimpan produk: ' + err.message);
+  }
 }
 
 // --------------------------------------------------------------------
@@ -1050,7 +1096,7 @@ function tampilkanStruk(transaksi) {
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(transaksi.no_transaksi)}`;
 
   document.getElementById('strukContent').innerHTML = `
-    <div class="center"><strong>KASIR APP</strong><br>${tanggal}<br>No: ${transaksi.no_transaksi}<br>Kasir: ${escapeHtml(transaksi.kasir_nama)}</div>
+    <div class="center"><strong>POINT KASIR</strong><br>${tanggal}<br>No: ${transaksi.no_transaksi}<br>Kasir: ${escapeHtml(transaksi.kasir_nama)}</div>
     <hr>${itemsHtml}<hr>
     <div class="row"><span>Subtotal</span><span>${formatRupiah(transaksi.subtotal)}</span></div>
     ${diskonHtml}
@@ -1507,13 +1553,20 @@ function renderKasirTable() {
       <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Admin' : 'Kasir'}</span></td>
       <td><span class="status-dot ${u.status === 'nonaktif' ? 'nonaktif' : 'aktif'}"></span> ${u.status === 'nonaktif' ? 'Nonaktif' : 'Aktif'}</td>
       <td>
-        ${u.id !== currentUser.id
-          ? `<button class="btn btn-secondary btn-sm" onclick="toggleStatusAkun('${u.id}', '${u.status || 'aktif'}')">
-              ${u.status === 'nonaktif' ? 'Aktifkan' : 'Nonaktifkan'}
-             </button>`
-          : '<span style="color:var(--text-muted);font-size:12px;">(Akun Anda)</span>'
-        }
-      </td>
+    ${u.id !== currentUser.id
+      ? `
+        <button class="btn btn-secondary btn-sm" onclick="toggleStatusAkun('${u.id}', '${u.status || 'aktif'}')">
+          ${u.status === 'nonaktif' ? 'Aktifkan' : 'Nonaktifkan'}
+        </button>
+
+        <button class="btn btn-danger btn-sm"
+          onclick="deleteKasirAccount('${u.id}','${escapeHtml(u.nama)}')">
+          Hapus
+        </button>
+      `
+      : '<span style="color:var(--text-muted);font-size:12px;">(Akun Anda)</span>'
+    }
+  </td>
     </tr>
   `).join('');
 }

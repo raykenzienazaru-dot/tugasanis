@@ -116,14 +116,16 @@ if (loginForm) {
 
       // 3. Validasi tab role
       const activeTab = document.querySelector('.role-tab.active');
+
       const selectedRole = activeTab
         ? (activeTab.id === 'tabAdmin' ? 'admin' : 'kasir')
         : 'admin';
 
       if (profile.role !== selectedRole) {
-        console.info(
-          `[AUTH] Tab login "${selectedRole}" tidak sama dengan role akun "${profile.role}". ` +
-          'Login tetap dilanjutkan sesuai role dari database.'
+        await supabase.auth.signOut();
+
+        throw new Error(
+          `Akun ini terdaftar sebagai ${profile.role.toUpperCase()}, silakan login melalui tab ${profile.role.toUpperCase()}.`
         );
       }
 
