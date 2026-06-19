@@ -618,9 +618,10 @@ function openProdukModal() {
   document.getElementById('produkHarga').value            = '';
   document.getElementById('produkStok').value             = '';
   renderKategoriDropdowns();
-  document.getElementById('produkNama').readOnly = false;
-document.getElementById('produkBarcode').readOnly = false;
+  document.getElementById('produkNama').disabled = false;
+document.getElementById('produkBarcode').disabled = false;
 document.getElementById('produkKategori').disabled = false;
+
   openModal('modalProduk');
 }
 
